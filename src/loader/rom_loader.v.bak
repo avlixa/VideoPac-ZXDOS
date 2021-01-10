@@ -1,0 +1,369 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date:    04/12/2020
+// Design Name: 
+// Module Name:    rom_loader
+// Project Name: 
+// Target Devices: 
+// Tool versions: 
+// Description: 
+//
+// Dependencies: 
+//
+// Revision: 
+// Revision 0.01 - File Created
+// Additional Comments: 
+//
+//    Author yomboprime
+//
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+module rom_loader (
+
+	input wire clk,
+	input wire reset,
+
+	// SRAM
+	output wire [18:0] sram_addr,
+	inout wire [7:0] sram_data,
+	output wire sram_we_n,
+
+	// VP
+	input wire [12:0] vp_addr,
+	output wire [7:0] vp_data,
+	input wire vp_en_n,
+
+	output wire vp_rst_n,
+   input wire [31:0] host_bootdata,
+   input wire  host_bootdata_req,
+   output reg host_bootdata_ack,
+	input wire  [15:0] host_bootdata_size,
+	output wire  [15:0] currentROM,
+	input wire test_rom ,
+	output wire test_led
+
+	);
+	
+	parameter
+		STATE_INITIAL = 4'd0,
+		STATE_SRAM_WAIT = 4'd1,
+		STATE_WRITE_B0 = 4'd2,
+		STATE_WRITE_B1 = 4'd3,
+		STATE_WRITE_B2 = 4'd4,
+		STATE_WRITE_B3 = 4'd5,
+		STATE_READNEXT = 4'd6,
+		STATE_SRAM_WAIT2 = 4'd7,
+		STATE_SRAM_WAIT3 = 4'd8
+		;
+
+	initial ram_wr_n = 1'b1;
+
+	reg dataToVP = 1'b0;
+	reg executingVP = 1'b1;
+	reg  [7:0] test_romq = 8'b0;
+	reg  [15:0] addr_wip;
+	wire [7:0] vp_data_aux;
+
+	wire [13:0] addr_testrom;
+	wire [7:0]  data_testrom;
+
+	//assign vp_rst_n = executingVP;
+	assign vp_rst_n = (reset)? 1'b0 : (test_rom == 1'b0)? !executingVP : test_romq[7];
+   assign test_led = (state == STATE_INITIAL)? 1'b0 : 1'b1;
+	always @(posedge clk) begin
+	    test_romq <= {test_romq[6:0] , test_rom};
+	end
+
+	reg [3:0] state = STATE_INITIAL;
+	reg [3:0] nextstate = STATE_INITIAL;
+
+	reg [18:0] ram_addr;
+	reg [7:0]  ram_data;
+	reg        ram_wr_n;
+	reg [15:0] old_bootdata_size;
+
+	// SRAM logic
+	assign sram_addr = ( dataToVP == 1'b0 ) ? ram_addr : { 6'b0, vp_addr };
+	assign sram_data = ( dataToVP == 1'b0 && sram_we_n == 1'b0 ) ? ram_data : 8'hZ;
+	assign sram_we_n = ram_wr_n;
+	// VP Memory logic
+	//assign vp_data = ( dataToVP == 1'b1 && vp_en_n == 1'b0 ) ? sram_data : 8'hFF;
+	assign vp_data = (test_rom == 1'b0) ? vp_data_aux : data_testrom;
+	assign vp_data_aux = (dataToVP == 1'b1 && vp_en_n == 1'b0 ) ? sram_data :	8'hFF;
+	assign addr_testrom = {1'b0, vp_addr};
+
+	assign currentROM = {12'b0, state};
+
+//	//State machine to receive and stash boot data in SRAM
+//	always @(posedge clk) begin
+//		if (reset) begin
+//			addr_wip <= 16'b0;
+//			ram_addr <= 19'b0;
+//			ram_wr_n <= 1'b1;
+//			host_bootdata_ack <= 1'b0;
+//			executingVP <= 1'b0;
+//			dataToVP <= 1'b1;
+//		   state <= STATE_INITIAL;		
+//		end
+//		else begin
+//			host_bootdata_ack <= 1'b0;			
+//			case (state)
+//				STATE_INITIAL: begin
+//						//ram_addr <= 19'b0;
+//						//ram_data <= 9'b0;
+//						ram_wr_n <= 1'b1;
+//						if (host_bootdata_req == 1'b1) begin
+//							ram_addr <= 19'b0;
+//							ram_data <= 9'b0;
+//							host_bootdata_ack <= 1'b0;	
+//
+////							if (addr_wip == 16'b0) begin
+////								ram_addr <= 19'b0;
+////								ram_data <= 9'b0;
+////								addr_wip <= { 2'b0, host_bootdata_size[15:2] };
+////								host_bootdata_ack <= 1'b0;	
+////							end
+////							else begin			
+////								ram_addr <= ram_addr + 1'b1;
+////								addr_wip <= addr_wip - 1'b1;
+////								host_bootdata_ack <= 1'b0;	
+////							end
+//							state <= STATE_WRITE_B0;
+//					      dataToVP <= 1'b0;
+//						   executingVP <= 1'b1;
+//							//host_bootdata_ack <= 1'b0;	
+//					   end
+//						else begin
+//					      dataToVP <= 1'b1;
+//						   executingVP <= 1'b0;
+//						end
+//				end
+//
+//				STATE_SRAM_WAIT: begin
+//						ram_wr_n <= 1'b0;
+//						state <= STATE_SRAM_WAIT2;	
+//				end
+//
+//				STATE_SRAM_WAIT2: begin
+//						ram_wr_n <= 1'b1;
+//						state <= nextstate;	
+////						state <= STATE_SRAM_WAIT3;	
+//				end
+//				
+////				STATE_SRAM_WAIT3: begin
+////						ram_addr <= ram_addr + 1'b1;
+////						state <= nextstate;	
+////				end
+//
+//				STATE_WRITE_B0: begin
+//						ram_data <= host_bootdata[31:24];
+//						ram_wr_n <= 1'b1;
+//						state <= STATE_SRAM_WAIT;
+//						nextstate <= STATE_WRITE_B1;
+//						
+//				end
+//
+//				STATE_WRITE_B1: begin
+//						ram_data <= host_bootdata[23:16];
+//						ram_wr_n <= 1'b1;
+//						state <= STATE_SRAM_WAIT;
+//						nextstate <= STATE_WRITE_B2;
+//				end
+//
+//				STATE_WRITE_B2: begin
+//						ram_data <= host_bootdata[15:8];
+//						ram_wr_n <= 1'b1;
+//						state <= STATE_SRAM_WAIT;
+//						nextstate <= STATE_WRITE_B3;
+//				end
+//
+//				STATE_WRITE_B3: begin
+//						ram_data <= host_bootdata[7:0];
+//						ram_wr_n <= 1'b1;
+//						state <= STATE_SRAM_WAIT;
+//						nextstate <= STATE_READNEXT;
+//						host_bootdata_ack <= 1'b1;
+//				end
+//				
+//				STATE_READNEXT: begin
+//						if (host_bootdata_req == 1'b1) begin			
+//							ram_addr <= ram_addr + 1'b1;
+//							//addr_wip <= addr_wip - 1'b1;
+//							state <= STATE_WRITE_B0;
+//							host_bootdata_ack <= 1'b0;	
+//						end
+//						else begin
+//							state <= STATE_INITIAL;
+//						end
+//				end
+//		
+//			endcase			
+//		end
+//	end
+
+	//State machine to receive and stash boot data in BRAM
+	always @(posedge clk) begin
+		if (reset) begin
+			ram_addr <= 19'b0;
+			ram_wr_n <= 1'b1;
+			host_bootdata_ack <= 1'b0;
+			executingVP <= 1'b0;
+			dataToVP <= 1'b1;
+		   state <= STATE_INITIAL;		
+		end
+		else begin
+			host_bootdata_ack <= 1'b0;			
+			case (state)
+				STATE_INITIAL: begin
+						//ram_addr <= 19'b0;
+						//ram_data <= 9'b0;
+						ram_wr_n <= 1'b1;
+						if (host_bootdata_req == 1'b1) begin
+							host_bootdata_ack <= 1'b0;	
+							state <= STATE_WRITE_B0;
+					      dataToVP <= 1'b0;
+						   executingVP <= 1'b1;
+					   end
+						else begin
+					      dataToVP <= 1'b1;
+						   executingVP <= 1'b0;
+						end
+				end
+
+				STATE_SRAM_WAIT: begin
+						ram_addr <= ram_addr + 1'b1;
+						ram_wr_n <= 1'b1;
+						host_bootdata_ack <= 1'b1;	
+						state <= nextstate;	
+				end
+
+				STATE_WRITE_B0: begin
+						ram_data <= host_bootdata[7:0];
+						ram_wr_n <= 1'b0;
+						state <= STATE_SRAM_WAIT;
+						nextstate <= STATE_INITIAL;
+				end
+			endcase			
+		end
+	end
+
+	rom_test rom_test
+	(
+		 .addr(addr_testrom[10:0]),
+		 .data(data_testrom)
+	);
+
+
+//	always @(posedge clk_sd) begin
+//
+//		case (state)
+//
+//			STATE_INITIAL: begin
+//				//debugled <= 8'h80;
+//				if ( doLoadRom ) begin
+//					dataToVP <= 1'b0;
+//					executingVP <= 1'b1;
+//					state <= STATE_WAIT_START;
+//				end
+//				else begin
+//					dataToVP <= 1'b1;
+//					executingVP <= 1'b1;
+//				end
+//			end
+//			
+//			STATE_WAIT_START: begin
+//				if ( ! doLoadRom ) begin
+//					state <= STATE_START_READING_ROM;
+//					currentROM <= selectedROM;
+//				end
+//			end
+//
+//			STATE_START_READING_ROM: begin
+//				//debugled <= 8'd1;
+//				if ( sd_initialized == 1'b1 ) begin
+//					if ( sd_busy == 1'b0 ) begin
+//						byteInSector <= 10'b0;
+//						sectorInROM <= 5'b0;
+//						state <= STATE_START_READING_SECTOR;
+//					end
+//				end
+//				else begin
+//					state <= STATE_INITIAL;
+//				end
+//			end
+//
+//			STATE_START_READING_SECTOR: begin
+//				//debugled <= 8'd2;
+//				if ( sectorInROM >= 5'd16 ) begin
+//					state <= STATE_FINISH_READING_ROM;
+//				end
+//				else if ( sd_busy == 1'b0 ) begin
+//					state <= STATE_START_READING_BYTE;
+//					doStartRead <= 1'b1;
+//				end
+//			end
+//
+//			STATE_START_READING_BYTE: begin
+//				//debugled <= 8'd3;
+//				doStartRead <= 1'b0;
+//				if ( byteInSector >= 10'd512 ) begin
+//					sectorInROM <= sectorInROM + 5'd1;
+//					byteInSector <= 10'b0;
+//					state <= STATE_START_READING_SECTOR;
+//				end
+//				else begin
+//					state <= STATE_READ_BYTE;
+//				end
+//			end
+//			
+//			STATE_READ_BYTE: begin
+//				if ( sd_rd_n == 1'b0 ) begin
+//					//debugled <= 8'd4;
+//					data_to_sram <= sd_data_in;
+//					state <= STATE_FINISH_READING_BYTE;
+//				end
+//				else begin
+//					if ( sd_initialized == 1'b0 ) begin
+//						state <= STATE_INITIAL;
+//					end
+//					//debugled <= { 3'b110, sectorInROM };
+//				end
+//			end
+//			
+//			STATE_FINISH_READING_BYTE: begin
+//				//debugled <= 8'd5;
+//				if ( sd_rd_n == 1'b1 ) begin
+//					state <= STATE_START_WRITING_BYTE;
+//				end
+//			end
+//			
+//			STATE_START_WRITING_BYTE: begin
+//				//debugled <= 8'd6;
+//				sram_we_n <= 1'b0;
+//				state <= STATE_FINISH_WRITING_BYTE;
+//			end
+//			
+//			STATE_FINISH_WRITING_BYTE: begin
+//				//debugled <= 8'd7;
+//				sram_we_n <= 1'b1;
+//				byteInSector <= byteInSector + 10'd1;
+//				state <= STATE_START_READING_BYTE;
+//			end
+//			
+//			STATE_FINISH_READING_ROM: begin
+//				//debugled <= 8'd8;
+//				executingVP <= 1'b0;
+//				state <= STATE_INITIAL;
+//			end
+//			
+//		endcase
+//
+//	end
+
+endmodule

@@ -1,0 +1,34 @@
+Hablé con Rampa y me dijo que ya lo arregló en NTSC pero que en Pal no había Informacion del chip.
+
+Jorge:
+tan solo era pedirte (si puede ser y lo ves bien) que me pases enlace de ese otro core que dices que has visto.
+
+Yo Me:
+Te lo puedo pasar, pero por lo que vi los actuales estan basados en ese. Es del proyecto pacedev... Una proyecto antiguo... Antes de mist, etc...
+
+Intentaba hace un framework multifpga. Estaba muy bien, pero se estancó hace años
+
+Tengo que mirar de nuevo los Esquemas, pero me pareció ver qué el pal era el NTSC con una circuitería añadida, más que otro integrado distinto.
+
+
+Diferencias PAL/NTSC
+https://web.archive.org/web/20130613131407/http://soeren.informationstheater.de/g7000/palntsc.html#palntsc
+
+When taking a simplified view a NTSC signal has 60 frames per second with 262 lines each, PAL has 50 frames with 312 lines each. It is a bit more complicated in reality, because normal TV broadcast is interlaced, only half of the picture is drawn at once, half of the lines are black and filled in by the next field. To differentiate between them one of the fields is one line longer than the other and a full frame of two fields has 525/625 lines. The Odyssey² and the Videopac G7000 both generate a non interlaced display, so I will use the 262/312 lines value.
+
+The Odyssey² generates a NTSC signal, the Videopac G7000 a PAL signal. The Odyssey² is the base model, the Videopac G7000 has a lot of additional logic to generate a PAL compatible signal. Both consoles use a single Quartz to generate several clock signals, including the CPU clock. This means all internal clocks differ slightly, which has a big impact on programming. The Videopac+ G7400 uses different clock sources for CPU and VDC, so there is no fixed relationship between CPU and VDC clock. The frequencies are the same as for the Videpac G7000.
+
+ 	Odyssey² 	Videopac
+Main clock 	7.15909 MHz 	17.734476 MHz
+VDC divider 	2 	5
+VDC clock 	3.58 MHz 	3.55 MHz
+CPU divider 	4/3 	3
+CPU clock 	5.37 MHz 	5.91 MHz
+Instruction cycle 	2.79 µs 	2.54 µs
+Lines per frame 	262 	312
+Frames per second 	60 	50
+Instructions per line 	342/15 = 22.8 	380/15 = 25.3
+Lines of VBLANK 	22 	72
+Instructions per VBLANK 	≅500 	≅1820
+
+

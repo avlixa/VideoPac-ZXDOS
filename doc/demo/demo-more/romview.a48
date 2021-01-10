@@ -1,0 +1,430 @@
+; Show the ROM contents
+
+; Version 1.0
+
+; $Id: romview.a48 390 2003-07-19 12:41:28Z sgust $
+
+; History:
+; Version 1.0
+;   first release
+
+; Show the ROM contents on the screen.
+;
+; Key Commands:
+;  0 previous bank
+;  1 next bank
+;  2 previous page
+;  3 next page
+;  4 previous 8 bytes in page
+;  5 next 8 byte in page
+
+; See TEST DATA for ROM TEST data patterns
+
+; Copyright (C) 2003 by Soeren Gust, sgust@ithh.informationstheater.de
+
+; Permission is hereby granted, free of charge, to any person obtaining a copy
+; of this software and associated documentation files (the "Software"), to deal
+; in the Software without restriction, including without limitation the rights
+; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+; copies of the Software, and to permit persons to whom the Software is
+; furnished to do so, subject to the following conditions:
+
+; The above copyright notice and this permission notice shall be included in
+; all copies or substantial portions of the Software.
+
+; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+; THE SOFTWARE.
+
+; You can always get the latest version at http://soeren.informationstheater.de
+
+; This is ugly, badly commented, unsupported code!
+
+	cpu	8048
+
+	org	400h
+	
+	include	"g7000.h"
+	include	"bitfuncs.inc"	; part of asl distribution
+
+iram_high	equ	020h
+iram_low	equ	021h
+iram_h2		equ	022h
+iram_l2		equ	023h
+iram_h3		equ	024h
+iram_l3		equ	025h
+
+	jmp	selectgame	; RESET
+	jmp	irq		; interrupt
+	jmp	timer		; timer
+	jmp	vsyncirq	; VSYNC-interrupt
+	jmp	start		; after selectgame
+	jmp	soundirq	; sound-interrupt
+
+timer	retr			; we don't need timer
+
+main
+	call	gfxoff
+	; show bank
+	in	a,P1
+	anl	a,#3
+	mov	r5,a
+	mov	r3,#010h
+	mov	r4,#020h
+	mov	r0,#vdc_char0
+	mov	r6,#col_chr_yellow
+	call	printchar
+	; show high byte address
+	mov	r1,#iram_high
+	mov	a,@r1
+	mov	r6,#col_chr_white
+	call	printnibble
+	; show low byte address
+	mov	r1,#iram_low
+	mov	a,@r1
+	swap	a
+	call	printnibble
+	mov	a,@r1
+	call	printnibble
+
+	; store iram_high/low in h2/l2
+	mov	r0,#iram_h2
+	mov	r1,#iram_high
+	mov	a,@r1
+	mov	@r0,a
+	inc	r0
+	inc	r1
+	mov	a,@r1
+	mov	@r0,a
+
+	; show high bytes in quad0
+	mov	r0,#vdc_quad0
+	mov	r2,#4
+	mov	r3,#010h
+	mov	r4,#038h
+	mov	r6,#col_chr_green
+.lp1	call	getbyte
+	sel	mb0
+	swap	a
+	call	printnibble
+	call	nextbyte
+	djnz	r2,.lp1
+
+	; get iram_high/low from h2/l2
+	mov	r0,#iram_high
+	mov	r1,#iram_h2
+	mov	a,@r1
+	mov	@r0,a
+	inc	r0
+	inc	r1
+	mov	a,@r1
+	mov	@r0,a
+
+	; show low bytes in quad1, R4 still correct
+	mov	r0,#vdc_quad1
+	mov	r2,#4
+	mov	r3,#018h
+.lp2	call	getbyte
+	sel	mb0
+	call	printnibble
+	call	nextbyte
+	djnz	r2,.lp2
+
+	; store iram_high/low in h3/l3
+	mov	r0,#iram_h3
+	mov	r1,#iram_high
+	mov	a,@r1
+	mov	@r0,a
+	inc	r0
+	inc	r1
+	mov	a,@r1
+	mov	@r0,a
+
+	; show high bytes in quad2
+	mov	r0,#vdc_quad2
+	mov	r2,#4
+	mov	r3,#010h
+	mov	r4,#048h
+	mov	r6,#col_chr_green
+.lp3	call	getbyte
+	sel	mb0
+	swap	a
+	call	printnibble
+	call	nextbyte
+	djnz	r2,.lp3
+
+	; get iram_high/low from h3/l3
+	mov	r0,#iram_high
+	mov	r1,#iram_h3
+	mov	a,@r1
+	mov	@r0,a
+	inc	r0
+	inc	r1
+	mov	a,@r1
+	mov	@r0,a
+
+	; show low bytes in quad3, R4 still correct
+	mov	r0,#vdc_quad3
+	mov	r2,#4
+	mov	r3,#018h
+.lp4	call	getbyte
+	sel	mb0
+	call	printnibble
+	call	nextbyte
+	djnz	r2,.lp4
+
+	call	gfxon
+
+	; get iram_high/low from h2/l2
+	mov	r0,#iram_high
+	mov	r1,#iram_h2
+	mov	a,@r1
+	mov	@r0,a
+	inc	r0
+	inc	r1
+	mov	a,@r1
+	mov	@r0,a
+
+key	call	waitforkey
+	jz	.prevb
+	dec	a
+	jz	.nextb
+	dec	a
+	jz	.prevh
+	dec	a
+	jz	.nexth
+	dec	a
+	jz	.prevl
+	dec	a
+	jz	.nextl
+
+	jmp	main
+
+; previous bank
+.prevb
+	in	a,P1
+	dec	a
+.setbnk	anl	a,#3
+	mov	r0,a
+	in	a,P1
+	anl	a,#0fch
+	orl	a,r0
+	outl	P1,a
+	jmp	main
+
+; Next bank
+.nextb
+	in	a,P1
+	inc	a
+	jmp	.setbnk
+
+; previous high byte
+.prevh
+	mov	r1,#iram_high
+	mov	a,@r1
+	dec	a
+	mov	@r1,a
+	xrl	a,#3
+	jz	.htof
+	jmp	main
+.htof	mov	a,#0fh
+	mov	@r1,a
+	jmp	main
+
+; next high byte
+.nexth
+	mov	r1,#iram_high
+	inc	@r1
+	mov	a,@r1
+	xrl	a,#010h
+	jz	.hto4
+	jmp	main
+.hto4	mov	a,#04h
+	mov	@r1,a
+	jmp	main
+
+; previous low byte
+.prevl
+	mov	r1,#iram_low
+	mov	a,#0f8h
+	add	a,@r1
+	mov	@r1,a
+	jmp	main
+
+; next low byte
+.nextl
+	mov	r1,#iram_low
+	mov	a,#008h
+	add	a,@r1
+	mov	@r1,a
+	jmp	main
+
+	org	0500h
+
+; init address to 0568h, start of test pattern
+start
+	mov	r0,#iram_high
+	mov	a,#5
+	mov	@r0,a
+	inc	r0
+	mov	a,#068h
+	mov	@r0,a
+
+	jmp	main
+
+printnibble
+	anl	a,#0fh
+	add	a,#lo(hextable)
+	movp	a,@a
+	mov	r5,a
+	call	printchar
+	ret
+
+hextable
+	db	0,1,2,3,4,5,6,7,8,9,020h,025h,023h,01ah,012h,01bh
+
+; switch iram_high/low to next byte
+nextbyte
+	mov	r1,#iram_low
+	inc	@r1
+	mov	a,@r1
+	jz	.inch
+	ret
+.inch	mov	r1,#iram_high
+	inc	@r1
+	ret
+
+	; read one byte from ROM address in iram_low,iram_high
+getbyte
+	mov	r1,#iram_high
+	mov	a,@r1
+	anl	a,#0fh
+	add	a,#lo(jumptable-4)
+	jmpp	@a
+jumptable
+	db	lo(to4)
+	db	lo(to5)
+	db	lo(to6)
+	db	lo(to7)
+	db	lo(to8)
+	db	lo(to9)
+	db	lo(toa)
+	db	lo(tob)
+	db	lo(toc)
+	db	lo(tod)
+	db	lo(toe)
+	db	lo(tof)
+
+; sel mb0/1 is handled by asl
+to4	jmp	04fbh
+to5	jmp	05fbh
+to6	jmp	06fbh
+to7	jmp	07fbh
+to8	jmp	08fbh
+to9	jmp	09fbh
+toa	jmp	0afbh
+tob	jmp	0bfbh
+toc	jmp	0cfbh
+tod	jmp	0dfbh
+toe	jmp	0efbh
+tof	jmp	0ffbh
+
+	; places rom access code at the end of every bank
+	irp	adr,04fbh,05fbh,06fbh,07fbh,08fbh,09fbh,0afbh,0bfbh,0cfbh,0dfbh,0efbh,0ffbh
+	org	adr
+
+	mov	r1,#iram_low
+	mov	a,@r1
+	movp	a,@a
+	ret
+	endm
+
+
+;TEST DATA starts here
+
+	org	0568h
+
+	db	01h,23h,45h,67h,89h,0abh,0cdh,0efh
+
+	rept	4
+	db	0,0ffh,055h,0aah,033h,0cch,00fh,0f0h
+	endm
+
+	rept	4
+	db	1,2,4,8,010h,020h,040h,080h
+	endm
+
+	org	0600h
+
+; Bit switch for first/last bit to catch inner byte timing problems
+
+	rept	040h
+	db	1
+	endm
+
+	rept	040h
+	db	080h
+	endm
+
+; Long rows of 0/1 bits to catch framing problems
+
+	rept	040h
+	db	0
+	endm
+
+	rept	038h
+	db	0ffh
+	endm
+
+; Just the page number for the rest
+
+	org	0700h
+	rept	0f8h
+	db	7
+	endm
+
+	org	0800h
+	rept	0f8h
+	db	8
+	endm
+
+	org	0900h
+	rept	0f8h
+	db	9
+	endm
+
+	org	0a00h
+	rept	0f8h
+	db	0ah
+	endm
+
+	org	0b00h
+	rept	0f8h
+	db	0bh
+	endm
+
+	org	0c00h
+	rept	0f8h
+	db	0ch
+	endm
+
+	org	0d00h
+	rept	0f8h
+	db	0dh
+	endm
+
+	org	0e00h
+	rept	0f8h
+	db	0eh
+	endm
+
+	org	0f00h
+	rept	0f8h
+	db	0fh
+	endm
+
+	end
