@@ -168,7 +168,10 @@ constant RELEASE_CODE : integer := 16#F0#;
 constant LEFT_SHIFT   : integer := 16#12#;
 constant RIGHT_SHIFT  : integer := 16#59#;
 constant CTRL_CODE    : integer := 16#14#;
+constant LEFT_ALT     : integer := 16#11#;
 constant CAPS_CODE    : integer := 16#58#;
+constant SCROLL_LOCK  : integer := 16#7E#;
+constant NUM_LOCK     : integer := 16#77#;
 constant F1_CODE      : integer := 16#05#;
 constant F2_CODE      : integer := 16#06#;
 constant F3_CODE      : integer := 16#04#;
@@ -257,9 +260,7 @@ signal ascii              : std_logic_vector(7 downto 0);      -- "REG" type onl
 signal left_shift_key     : std_logic;
 signal right_shift_key    : std_logic;
 signal hold_extended      : std_logic;  -- Holds prior value, cleared at rx_output_strobe
-signal hold_extended_end  : std_logic;  -- Holds prior value, cleared at rx_output_strobe
 signal hold_released      : std_logic;  -- Holds prior value, cleared at rx_output_strobe
-signal hold_released_end  : std_logic;  -- Holds prior value, cleared at rx_output_strobe
 signal ps2_clk_s          : std_logic;  -- Synchronous version of this input
 signal ps2_data_s         : std_logic;  -- Synchronous version of this input
 signal ps2_clk_hi_z       : std_logic;  -- Without keyboard, high Z equals 1 due to pullups.
@@ -398,6 +399,9 @@ begin
         enable_timer_60usec <= '0';
         m1_next_state <= m1_rx_clk_h;
 
+	--
+	-- write to keyboard (Tx)
+	--
   when m1_tx_reset_timer =>
         enable_timer_60usec <= '0';
         m1_next_state <= m1_tx_force_clk_l;
@@ -494,7 +498,8 @@ begin
 end process;
 
 -- This is the bit counter
-bit_counter: process(clk)
+--
+bit_counter: process(clk, reset, m1_state, bit_count )
 begin
   if clk'event and clk = '0' then
     if ( reset = '1' ) or
@@ -556,8 +561,8 @@ begin
             (m1_state = m1_tx_rising_edge_marker) ) then
        q <= ps2_data_s & q((TOTAL_BITS-1) downto 1);
     end if;
-    
   end if;
+
 -- Create the signals which indicate special scan codes received.
 -- These are the "unlatched versions."
   if (q(8 downto 1) = EXTEND_CODE) and (rx_shifting_done = '1') then
@@ -570,20 +575,6 @@ begin
   else
     released <= '0';
   end if;
-
---  if (rx_shifting_done = '1') then
---     if (q(8 downto 1) = EXTEND_CODE) then 
---       extended <= '1';
---       released <= '0';
---     elsif (q(8 downto 1) = RELEASE_CODE) then
---       released <= '1';
---       extended <= '0';
---     else
---       extended <= '0';
---       released <= '0';
---     end if;
---  end if;
-
 end process;
 
 -- This is the 60usec timer counter
@@ -626,104 +617,99 @@ end process;
 -- Store the special scan code status bits
 -- Not the final output, but an intermediate storage place,
 -- until the entire set of output data can be assembled.
-special_scan : process(clk)
+--
+special_scan : process(clk, reset, rx_output_strobe, rx_shifting_done, extended, released )
 begin
   if clk'event and clk='0' then
-    if (reset = '1') then --or (rx_output_strobe = '1') then
+    if (reset = '1') or (rx_output_strobe = '1') then
       hold_extended <= '0';
-      hold_extended_end <= '0';
       hold_released <= '0';
-      hold_released_end <= '0';
     else
-      if (rx_shifting_done = '1') and (released = '1') then
-           hold_released <= '1';
-           hold_released_end <= '0';
-      elsif (rx_output_event = '1' and hold_released = '1') then
-        hold_released_end <= '1';
-      elsif (hold_released_end = '1') then
-        hold_released <= '0';
-        hold_released_end <= '0';
-      end if;
-
-      if (rx_shifting_done = '1') and (extended = '1')then
+      if (rx_shifting_done = '1') and (extended = '1') then
         hold_extended <= '1';
-        hold_extended_end <= '0';
-      elsif (rx_output_event = '1' and hold_extended = '1') then
-        hold_extended_end <= '1';
-      elsif (hold_extended_end = '1') then
-        hold_extended <= '0';
-        hold_extended_end <= '0';
+      end if;
+      if (rx_shifting_done = '1') and (released = '1') then
+        hold_released <= '1';
       end if;
     end  if;
   end if;
 end process;
-
-
+ 
+--
+-- convert scan code to ascii code
+--
+scan_to_ascii : process( shift_key_on, caps_key_on, q )
+begin
+	shift_key_plus_code <= shift_key_on & caps_key_on & std_logic_vector(q(7 downto 1));
+end process;
+ 
+--
 -- These bits contain the status of the two shift keys
-left_shift_proc : process(clk)
+--
+left_shift_proc : process(clk, reset, q, rx_shifting_done, hold_released )
 begin
-  if clk'event and clk = '0' then
-    if (reset = '1') then
-      left_shift_key <= '0';
-    elsif (q(8 downto 1) = LEFT_SHIFT) and 
-          (rx_shifting_done = '1') then
-      left_shift_key <= not hold_released;
-    end if;
-  end if;
+	if clk'event and clk = '0' then
+		if (reset = '1') then
+			left_shift_key <= '0';
+		elsif (q(8 downto 1) = LEFT_SHIFT) and (rx_shifting_done = '1') then
+			left_shift_key <= not hold_released;
+		end if;
+	end if;
 end process;
-
-right_shift_proc : process(clk)
+ 
+right_shift_proc : process(clk, reset, q, rx_shifting_done, hold_released )
 begin
-  if clk'event and clk = '0' then
-    if (reset = '1') then
-      right_shift_key <= '0';
-    elsif (q(8 downto 1) = RIGHT_SHIFT) and
-          (rx_shifting_done = '1') then
-      right_shift_key  <= not hold_released;
-    end if;
-  end if;
+	if clk'event and clk = '0' then
+		if (reset = '1') then
+			right_shift_key <= '0';
+		elsif (q(8 downto 1) = RIGHT_SHIFT) and (rx_shifting_done = '1') then
+			right_shift_key <= not hold_released;
+		end if;
+	end if;
 end process;
-
-shift_key_on <= left_shift_key or right_shift_key;
-rx_shift_key_on <= shift_key_on;
-
+ 
+shift_proc : process( left_shift_key, right_shift_key, shift_key_on, caps_key_on, q )
+begin
+	shift_key_on <= left_shift_key or right_shift_key;
+	rx_shift_key_on <= shift_key_on;
+end process;
+ 
 --
 -- Control keys
 --
-ctrl_proc : process(clk)
+ctrl_proc : process(clk, reset, q, rx_shifting_done, hold_released )
 begin
-  if clk'event and clk = '0' then
-    if (reset = '1') then
-      ctrl_key_on <= '0';
-    elsif (q(8 downto 1) = CTRL_CODE) and
-          (rx_shifting_done = '1') then
-      ctrl_key_on <= not hold_released;
-    end if;
-  end if;
+	if clk'event and clk = '0' then
+		if (reset = '1') then
+			ctrl_key_on <= '0';
+		elsif (q(8 downto 1) = CTRL_CODE) and (rx_shifting_done = '1') then
+			ctrl_key_on <= not hold_released;
+		end if;
+	end if;
 end process;
-
+ 
 --
 -- Caps lock
 --
-caps_proc : process(clk)
+caps_proc : process(clk, reset, q, rx_shifting_done, hold_released, caps_key_on )
 begin
-  if clk'event and clk = '0' then
-    if (reset = '1') then
-      caps_key_on <= '0';
-    elsif (q(8 downto 1) = CAPS_CODE) and
-          (rx_shifting_done = '1') and
-          (hold_released = '0') then
-      caps_key_on <= not caps_key_on;
-    end if;
-  end if;
+	if clk'event and clk = '0' then
+		if (reset = '1') then
+			caps_key_on <= '0';
+		elsif (q(8 downto 1) = CAPS_CODE) and (rx_shifting_done = '1') then
+			if (hold_released = '0') then
+				caps_key_on <= not caps_key_on;
+			end if;
+		end if;
+	end if;
 end process;
 
 --
 -- F1, F2, F3 ... F12
 --
-function_keys : process(clk, rx_shifting_done, q)
+function_keys : process(clk,reset,q,rx_shifting_done)
 begin
- if clk'event and clk = '0' then
+  if clk'event and clk = '0' then
     if (reset = '1') then
       keyb_f1 <= '0';
 		keyb_f2 <= '0';
@@ -777,16 +763,19 @@ begin
   end if;
 end process;
 
-
+--
 -- Output the special scan code flags, the scan code and the ascii
-special_scan_proc : process(clk)
+--
+special_scan_proc : process(clk, reset, rx_output_strobe,
+							hold_extended, hold_released, 
+							ascii, ctrl_key_on )
 begin
   if clk'event and clk = '0' then
     if (reset = '1') then
       rx_extended_q <= '0';
       rx_released_q <= '0';
-      rx_ascii <= "00000000";
-    elsif rx_output_strobe = '1' then
+      rx_ascii <= (others=>'0');
+    elsif (rx_output_strobe = '1') then
       if rx_extended_q = '0' then
         rx_extended_q <= hold_extended;
       end if;
@@ -798,9 +787,9 @@ begin
       rx_released_q <= '0';
 
       if ctrl_key_on = '1' then
-        rx_ascii <= ascii and "00011111";
+         rx_ascii <= ascii and "00011111";
       else
-        rx_ascii <= ascii;
+         rx_ascii <= ascii;
       end if;
     end if;
   end if;
@@ -813,10 +802,12 @@ rx_released <= rx_released_q;
 -- are received and the next (actual key) scan code is also ready.
 -- (the presence of rx_extended or rx_released refers to the
 -- the current latest scan code received, not the previously latched flags.)
-
-rx_output_proc : process( clk,
-                          rx_shifting_done, 
-                          extended, released)
+--
+rx_output_proc : process( clk, reset, 
+                          rx_shifting_done, rx_output_strobe,
+                          extended, released,
+                          hold_extended, hold_released, 
+						  q, ascii, rx_read )
 begin
   if (rx_shifting_done = '1') and (extended = '0') and (released = '0') then
     rx_output_event <= '1';
@@ -829,9 +820,9 @@ begin
       rx_output_strobe <= '0';
       rx_data_ready    <= '0';
     elsif (rx_shifting_done = '1') and
-          (rx_output_strobe = '0') and
---          (extended = '0') and
---          (released = '0') and
+          (rx_output_strobe = '0') and 
+          (extended = '0') and
+          (released = '0') and
 --          (hold_released = '0' ) and
           (ascii /= "00000000" ) then
 --   ((TRAP_SHIFT_KEYS_PP = 0) or
@@ -839,18 +830,11 @@ begin
 --       (q(8 downto 1) /= LEFT_SHIFT) and
 --       (q(8 downto 1) /= CTRL_CODE) ) )then
       rx_output_strobe <= '1';
-      --rx_data_ready    <= '1'; --avlixa
     elsif rx_read = '1' then
       rx_output_strobe <= '0';
-      --rx_data_ready    <= '0'; --avlixa
-    end if;
-    
-    if (ascii /= "00000000" ) then
-      rx_data_ready <= rx_output_strobe; --avlixa
-    else
-      rx_data_ready <= '0'; --avlixa
     end if;
   end if;
+  rx_data_ready <= rx_output_strobe;
 end process;
 
 
@@ -858,10 +842,8 @@ end process;
 -- Only the ASCII codes which I considered important have been included.
 -- if you want more, just add the appropriate case statement lines...
 -- (You will need to know the keyboard scan codes you wish to assign.)
--- The entries are listed in ascending order of ASCII value.
-shift_key_plus_code <= shift_key_on & caps_key_on &
-                       std_logic_vector(q(7 downto 1));
-
+-- The entries are listed in ascending order of ASCII value.   
+--
 --shift_map : process( shift_key_plus_code )
 --begin
 --  case shift_key_plus_code is

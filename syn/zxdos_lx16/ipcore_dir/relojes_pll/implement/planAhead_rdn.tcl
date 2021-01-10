@@ -55,15 +55,15 @@ create_project $projName $projDir/results/$projName -part $device -force
 set_property design_mode RTL [current_fileset -srcset]
 set top_module relojes_pll_exdes
 set_property top relojes_pll_exdes [get_property srcset [current_run]]
-add_files -norecurse {../../../relojes_pll.vhd}
-add_files -norecurse {../../example_design/relojes_pll_exdes.vhd}
+add_files -norecurse {../../../relojes_pll.v}
+add_files -norecurse {../../example_design/relojes_pll_exdes.v}
 import_files -fileset [get_filesets constrs_1 ] -force -norecurse {../../example_design/relojes_pll_exdes.xdc}
 synth_design
 opt_design 
 place_design 
 route_design 
 write_sdf -rename_top_module relojes_pll_exdes -file routed.sdf 
-write_vhdl -file routed.vhd
+write_verilog -nolib -mode timesim -sdf_anno false -rename_top_module relojes_pll_exdes -file routed.v
 report_timing -nworst 30 -path_type full -file routed.twr
 report_drc -file report.drc
 write_bitstream -bitgen_options {-g UnconstrainedPins:Allow} -file routed.bit

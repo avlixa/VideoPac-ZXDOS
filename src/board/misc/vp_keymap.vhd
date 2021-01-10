@@ -86,7 +86,7 @@ begin
             col_v :=  6;
             valid_key_v := true;
 
-          when 10 =>                    -- return
+          when  13 => --10 =>                    -- return
             row_v := 14;
             col_v :=  6;
             valid_key_v := true;

@@ -271,6 +271,7 @@ module sega_joystick_fsm
 	// State declation
 	reg [4:0] st_reg = s1, st_next;
 
+	//! fsm_extract
 	// Next State asign
 	always @(posedge clk) 
 	begin

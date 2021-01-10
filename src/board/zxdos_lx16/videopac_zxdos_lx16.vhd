@@ -150,11 +150,21 @@ architecture struct of videopac_zxdos_lx16 is
 	  -- Clock out ports
 	  CLK_OUT1          : out    std_logic; --50Mhz
 	  CLK_OUT2          : out    std_logic; --70.833Mhz
-	  CLK_OUT3          : out    std_logic; --42.500Mhz
-	  -- Status and control signals
+	  CLK_OUT3          : out    std_logic; --42.500Mz
+     -- Status and control signals
 	  LOCKED            : out    std_logic
 	 );
   end component;
+
+--   component clock
+--   port (
+--     i50 : in     std_logic; --50Mhz
+--     o50 : out    std_logic; --50Mhz
+--     o70 : out    std_logic; --70.833Mhz
+--     o42 : out    std_logic; --42.857Mhz
+--     locked  : out    std_logic
+--   );
+--   end component;
 
   component rom_vp
     port(
@@ -477,6 +487,9 @@ architecture struct of videopac_zxdos_lx16 is
   signal rgb_b_o_prev           : std_logic_vector( 9 downto 0);
   signal rgb_y_sign             : std_logic_vector( 9 downto 0);
   
+  --dipswitches for isim
+  signal dipswt_nc              : std_logic_vector(18 downto 0);
+
   
 begin
 
@@ -537,10 +550,20 @@ begin
 	  CLK_OUT1          => clk_50m_s,       --50Mhz
 	  CLK_OUT2          => clk_71m_s,       --70.833Mhz
 	  CLK_OUT3          => clk_43m_s,       --42.500Mhz
+     --CLK_OUT3          => clk_50m_s,       --50Mhz
 	  -- Status and control signals
 	  LOCKED            => dcm_locked_s
 	 );
 
+--   relojes : clock
+--   port map
+--   ( i50 => clk50mhz,
+--     o50 => clk_50m_s,
+--     o70 => clk_71m_s,
+--     o42 => clk_43m_s,
+--     locked  => dcm_locked_s
+--   );
+   
 -- Original Clocks:
 -- Standard    NTSC           PAL
 -- Main clock  42.95454       70.9379 
@@ -575,7 +598,8 @@ begin
       cnt_cpu_qn    <= cnt_cpu_cn;
       cnt_vdc_qn    <= cnt_vdc_cn;
 		cnt_vga_qn    <= cnt_vga_cn;
-		--clk_vga_en_qn <= '0';
+		clk_vga_en_qn <= '0';
+      --clk_vdc_en_sn <= '0';
 		clk_sysn <= '0';
     elsif rising_edge(clk_43m_s) then
       clk_sysn <= not clk_sysn; --'1' when clk_sysn = '0' else '0';
@@ -595,6 +619,7 @@ begin
       if cnt_vga_qn = 0 then
         cnt_vga_qn    <= cnt_vga_cn;
         clk_vga_en_qn <= '1';
+        --clk_vdc_en_sn <= not clk_vdc_en_sn;
       else
         cnt_vga_qn    <= cnt_vga_qn - 1;
         clk_vga_en_qn <= '0';
@@ -625,10 +650,8 @@ begin
       --CPU
 		if clk_cpu_en_sp = '1' then
         cnt_cpu_qp <= cnt_cpu_cp;
-        clk_cpu_en_sp <= '1';
       else
         cnt_cpu_qp <= cnt_cpu_qp - 1;
-        clk_cpu_en_sp <= '0';
       end if;
       --VDC
       if clk_vdc_en_sp = '1' then
@@ -793,12 +816,12 @@ begin
 --    );
     dac1 : dac
     generic map (
-      msbi_g => 3
+      msbi_g => 4
     )
     port map (
-      clk_i => clk_sysn,
+      clk_i => clk_vdc_en_sp,
       res_n_i => reset_n_s,
-      dac_i => snd_vec_s,
+      dac_i => '0' & snd_vec_s,
       dac_o => audio_s
     );
     
@@ -1128,6 +1151,7 @@ begin
   MyCtrlModule : entity work.CtrlModule
 	port map (
 		clk => clk_50m_s,
+      --clk => clk_71m_s,
 		reset_n => por_n_s,
 
 		-- Video signals for OSD
@@ -1148,11 +1172,11 @@ begin
 		spi_cs => sd_cs_n,
 
 		-- DIP switches
-		dipswitches(18 downto 17) => open,
-		dipswitches(16 downto 15) => open,
-		dipswitches(14 downto 13) => open,
-		dipswitches(12 downto 11) => open,
-		dipswitches(10 downto 7) => open,
+		dipswitches(18 downto 17) => dipswt_nc(18 downto 17),
+		dipswitches(16 downto 15) => dipswt_nc(16 downto 15),
+		dipswitches(14 downto 13) => dipswt_nc(14 downto 13),
+		dipswitches(12 downto 11) => dipswt_nc(12 downto 11),
+		dipswitches(10 downto 7) => dipswt_nc(10 downto 7),
       dipswitches(6 downto 5) => vga2grey,
 		dipswitches(4) => is_pal_s,
 		dipswitches(3 downto 2) => zxunoboard,
@@ -1189,6 +1213,7 @@ begin
 	port map
 	(
 		clk => clk_50m_s,
+      --clk => clk_71m_s,
 		red_in => vga_red_i,
 		green_in => vga_green_i,
 		blue_in => vga_blue_i,
