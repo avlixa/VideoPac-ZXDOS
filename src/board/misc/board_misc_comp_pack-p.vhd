@@ -28,6 +28,7 @@ package board_misc_comp_pack is
 
   component dblscan
     port (
+      is_pal_in     : in  std_logic;
       RGB_R_IN      : in  std_logic;
       RGB_G_IN      : in  std_logic;
       RGB_B_IN      : in  std_logic;
@@ -52,6 +53,28 @@ package board_misc_comp_pack is
       RESET_N_I     : in  std_logic;
 		
 		ODD_LINE      : out std_logic
+
+    );
+  end component;
+
+component vga_scandoubler
+    port (
+           clk     : in  std_logic;
+           clkcolor4x     : in  std_logic;
+           clk14en     : in  std_logic;
+           enable_scandoubling     : in  std_logic;
+           disable_scaneffect     : in  std_logic;  -- 1 to disable scanlines
+           ri : in std_logic_vector(2 downto 0);
+           gi : in std_logic_vector(2 downto 0);
+           bi : in std_logic_vector(2 downto 0);
+           hsync_ext_n     : in  std_logic;
+           vsync_ext_n     : in  std_logic;
+           csync_ext_n     : in  std_logic;
+           ro : out std_logic_vector(2 downto 0);
+           go : out std_logic_vector(2 downto 0);
+           bo : out std_logic_vector(2 downto 0);
+           hsync     : out std_logic;
+           vsync     : out std_logic
 
     );
   end component;

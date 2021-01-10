@@ -112,6 +112,7 @@ use work.tech_comp_pack.vp_por;
 use work.vp_console_comp_pack.vp_console;
 --use work.board_misc_comp_pack.mc_ctrl;
 use work.board_misc_comp_pack.dblscan;
+use work.board_misc_comp_pack.vga_scandoubler;
 use work.i8244_col_pack.all;
 use work.board_misc_comp_pack.vp_keymap;
 use work.ps2_keyboard_comp_pack.ps2_keyboard_interface;
@@ -254,13 +255,25 @@ architecture struct of videopac_zxdos_lx16 is
     );
   end component;
 
+--  component dac
+--    port(
+--      Clk : in  std_logic;
+--      Reset : in  std_logic;
+--      DACout: out std_logic;
+--      DACin : in  std_logic_vector(8 downto 0)
+--    );
+--  end component;
+
   component dac
-    port(
-      Clk : in  std_logic;
-      Reset : in  std_logic;
-      DACout: out std_logic;
-      DACin : in  std_logic_vector(8 downto 0)
-    );
+  generic (
+    msbi_g : integer := 7
+  );
+  port (
+    clk_i   : in  std_logic;
+    res_n_i : in  std_logic;
+    dac_i   : in  std_logic_vector(msbi_g downto 0);
+    dac_o   : out std_logic
+  );
   end component;
 
   signal dcm_locked_s   : std_logic;
@@ -287,29 +300,13 @@ architecture struct of videopac_zxdos_lx16 is
   
   signal control_rst_n    : std_logic;
 
-
---  -- CPU clock = PLL clock 21.5 MHz / 4
---  constant cnt_cpu_c    : unsigned(1 downto 0) := to_unsigned(3, 2);
---  -- VDC clock = PLL clock 21.5 MHz / 3
---  -- note: VDC core runs with double frequency than compared with 8244 chip
---  constant cnt_vdc_c    : unsigned(1 downto 0) := to_unsigned(2, 2);
---  -- VGA clock = PLL clock 43 MHz / 3 (2x VDC clock)
---  constant cnt_vga_c    : unsigned(1 downto 0) := to_unsigned(2, 2);
---  --
---  signal cnt_cpu_q      : unsigned(1 downto 0);
---  signal cnt_vdc_q      : unsigned(1 downto 0);
---  signal cnt_vga_q      : unsigned(1 downto 0); c
---  signal clk_cpu_en_s,
---         clk_vdc_en_s,
---         clk_vga_en_q   : std_logic;
-
   -- Relojes NTSC (Odyssey2)
   -- CPU clock counter = PLL clock 42.5 MHz / 8 = 5.312
   constant cnt_cpu_cn    : unsigned(3 downto 0) := to_unsigned(7, 4);
   -- VDC clock = PLL clock 42.5 MHz / 6 = 7.083
   -- note: VDC core runs with double frequency than compared with 8244 chip
   constant cnt_vdc_cn    : unsigned(3 downto 0) := to_unsigned(5, 4);
-  -- VGA clock = PLL clock 42.5 MHz / 3 (2x VDC clock) = 14.16
+  -- VGA clock = PLL clock 42.5 MHz / 3 (2x VDC clock) = 14.166
   constant cnt_vga_cn    : unsigned(3 downto 0) := to_unsigned(2, 4);
   --
   signal cnt_cpu_qn      : unsigned(3 downto 0);
@@ -320,12 +317,12 @@ architecture struct of videopac_zxdos_lx16 is
          clk_vga_en_qn   : std_logic;
 
   -- Relojes PAL (Videopac)
-  -- CPU clock counter = PLL clock 70.83 MHz / 12
+  -- CPU clock counter = PLL clock 70.83 MHz / 12 = 5.9027
   constant cnt_cpu_cp    : unsigned(3 downto 0) := to_unsigned(11, 4);
-  -- VDC clock = PLL clock 70.83 MHz / 10
+  -- VDC clock = PLL clock 70.83 MHz / 10 = 7.083
   -- note: VDC core runs with double frequency than compared with 8244 chip
   constant cnt_vdc_cp    : unsigned(3 downto 0) := to_unsigned(9, 4);
-  -- VGA clock = PLL clock 70.83 MHz / 5 (2x VDC clock)
+  -- VGA clock = PLL clock 70.83 MHz / 5 (2x VDC clock)  = 14.166
   constant cnt_vga_cp    : unsigned(3 downto 0) := to_unsigned(4, 4);
   --
   signal cnt_cpu_qp      : unsigned(3 downto 0);
@@ -499,9 +496,193 @@ begin
 	reset_video_n_s <= por_n_s and dcm_locked_s;
 	reset_video_s <= not reset_video_n_s;
 	
-	--
+  -----------------------------------------------------------------------------
+  -- Power-on reset module
+  -----------------------------------------------------------------------------
+--  por_b : vp_por
+--    generic map (
+--      delay_g     => 3,
+--      cnt_width_g => 2
+--    )
+--    port map (
+--      clk_i   => clk_21m5_s,
+--      por_n_o => por_n_s
+--    );
+  por_b : vp_por
+    generic map (
+      delay_g     => 6,
+      cnt_width_g => 3
+    )
+    port map (
+      clk_i   => clk_43m_s,
+      por_n_o => por_n_s
+    );
+
+  -----------------------------------------------------------------------------
+  -- The PLL
+  -----------------------------------------------------------------------------
+--  pll_b : zxuno_xs6_pll
+--    port map (
+--      clkin_i    => clk50mhz,
+--      locked_o   => dcm_locked_s,
+--      clk_43m_o  => clk_43m_s,     --42.857Mhz
+--      clk_21m5_o => clk_21m5_s     --21.428Mhz
+--    );
+
+  pll_dual : relojes_pll
+  port map
+	 (-- Clock in ports
+	  CLK_IN1           => clk50mhz, --50Mhz
+	  -- Clock out ports
+	  CLK_OUT1          => clk_50m_s,       --50Mhz
+	  CLK_OUT2          => clk_71m_s,       --70.833Mhz
+	  CLK_OUT3          => clk_43m_s,       --42.500Mhz
+	  -- Status and control signals
+	  LOCKED            => dcm_locked_s
+	 );
+
+-- Original Clocks:
+-- Standard    NTSC           PAL
+-- Main clock  42.95454       70.9379 
+-- Sys  clock  21.47727 MHz   35.46895 MHz // ntsc/pal colour carrier times 3/4 respectively
+-- VDC divider 3              5
+-- VDC clock   7.159 MHz      7.094 MHz
+-- CPU divider 4              6
+-- CPU clock   5.369 MHz      5.911 MHz
+
+-- Core Clocks:
+-- Standard    NTSC           PAL
+-- Main clock  42.500         70.833 
+-- Sys clock   21.25 MHz      35.41666 MHz // ntsc/pal colour carrier times 3/4 respectively
+-- VGA divider 3              5
+-- VGA clok    14,1666        14,16666
+-- VDC divider 6              10
+-- VDC clock   7.0833 MHz     7.0833 MHz
+-- CPU divider 4              6
+-- CPU clock   5.3125 MHz     5.9027 MHz
+
+
+
+  -----------------------------------------------------------------------------
+  -- Process clk_en
+  --
+  -- Purpose:
+  --   Generates the CPU and VDC clock enables.
+  --   For NTSC signal
+  clk_en: process (clk_43m_s, reset_video_s)
+  begin
+    if reset_video_s = '1' then
+      cnt_cpu_qn    <= cnt_cpu_cn;
+      cnt_vdc_qn    <= cnt_vdc_cn;
+		cnt_vga_qn    <= cnt_vga_cn;
+		--clk_vga_en_qn <= '0';
+		clk_sysn <= '0';
+    elsif rising_edge(clk_43m_s) then
+      clk_sysn <= not clk_sysn; --'1' when clk_sysn = '0' else '0';
+      --CPU
+		if clk_cpu_en_sn = '1' then
+        cnt_cpu_qn <= cnt_cpu_cn;
+      else
+        cnt_cpu_qn <= cnt_cpu_qn - 1;
+      end if;
+      --VDC
+      if clk_vdc_en_sn = '1' then
+        cnt_vdc_qn <= cnt_vdc_cn;
+      else
+        cnt_vdc_qn <= cnt_vdc_qn - 1;
+      end if;
+		--VGA
+      if cnt_vga_qn = 0 then
+        cnt_vga_qn    <= cnt_vga_cn;
+        clk_vga_en_qn <= '1';
+      else
+        cnt_vga_qn    <= cnt_vga_qn - 1;
+        clk_vga_en_qn <= '0';
+      end if;				
+    end if;
+  end process clk_en;
+  --
+  clk_cpu_en_sn <= '1' when cnt_cpu_qn = 0 else '0';
+  clk_vdc_en_sn <= '1' when cnt_vdc_qn = 0 else '0';
+--  clk_vga_en_qn <= '1' when cnt_vga_qn = 0 else '0';
+  --
+  -----------------------------------------------------------------------------
+  -- Process clk_en
+  --
+  -- Purpose:
+  --   Generates the CPU and VDC clock enables.
+  --   For PAL signal
+  clk_ep: process (clk_71m_s, reset_video_s)
+  begin
+	 if reset_video_s = '1' then
+      cnt_cpu_qp    <= cnt_cpu_cp;
+      cnt_vdc_qp    <= cnt_vdc_cp;
+		cnt_vga_qp    <= cnt_vga_cp;
+		--clk_vga_en_qp <= '0';
+		clk_sysp <= '0';
+    elsif rising_edge(clk_71m_s) then
+      clk_sysp <= not clk_sysp; --'1' when clk_sysp = '0' else '0';
+      --CPU
+		if clk_cpu_en_sp = '1' then
+        cnt_cpu_qp <= cnt_cpu_cp;
+        clk_cpu_en_sp <= '1';
+      else
+        cnt_cpu_qp <= cnt_cpu_qp - 1;
+        clk_cpu_en_sp <= '0';
+      end if;
+      --VDC
+      if clk_vdc_en_sp = '1' then
+        cnt_vdc_qp <= cnt_vdc_cp;
+      else
+        cnt_vdc_qp <= cnt_vdc_qp - 1;
+      end if;
+		--VGA
+      if cnt_vga_qp = 0 then
+        cnt_vga_qp    <= cnt_vga_cp;
+        clk_vga_en_qp <= '1';
+      else
+        cnt_vga_qp    <= cnt_vga_qp - 1;
+        clk_vga_en_qp <= '0';
+      end if;		
+    end if;
+  end process clk_ep;
+  --
+  clk_cpu_en_sp <= '1' when cnt_cpu_qp = 0 else '0';
+  clk_vdc_en_sp <= '1' when cnt_vdc_qp = 0 else '0';
+--  clk_vga_en_qp <= '1' when cnt_vga_cp = 0 else '0';
+  --
+
+   -----------------------------------------------------------------------------
+   -- Process clock selection
+   -----------------------------------------------------------------------------
+   -- Purpose:
+   --   Generates the global clocks depending on model (PAL/NTSC).
+   --
+ 
+   -- BUFGMUX: Global Clock Mux Buffer
+   --          Spartan-6
+   -- Xilinx HDL Language Template, version 14.7
+
+   BUFGMUX_inst : BUFGMUX
+   generic map (
+      CLK_SEL_TYPE => "SYNC"  -- Glitchles ("SYNC") or fast ("ASYNC") clock switch-over
+   )
+   port map (
+      O => clk_main,          -- 1-bit output: Clock buffer output
+      I0 => clk_43m_s,        -- 1-bit input: Clock buffer input (S=0)
+      I1 => clk_71m_s,        -- 1-bit input: Clock buffer input (S=1)
+      S => is_pal_s           -- 1-bit input: Clock buffer select
+   );
+  
+  clk_sys <= clk_sysp when (is_pal_s = '1') else clk_sysn;
+  clk_cpu <= clk_cpu_en_sp when (is_pal_s = '1') else clk_cpu_en_sn;
+  clk_vdc <= clk_vdc_en_sp when (is_pal_s = '1') else clk_vdc_en_sn;
+  clk_vga <= clk_vga_en_qp when (is_pal_s = '1') else clk_vga_en_qn;
+  
+   -----------------------------------------------------------------------------
 	-- Rom management
-	-- 
+   -----------------------------------------------------------------------------
+
 --	sram_ub_n <= '1';
 --	sram_lb_n <= '0';
 	sram_addr(20 downto 19) <= "00";
@@ -551,211 +732,6 @@ begin
 	 --testled1 <= not reset_s;
     
   
-  -----------------------------------------------------------------------------
-  -- Power-on reset module
-  -----------------------------------------------------------------------------
---  por_b : vp_por
---    generic map (
---      delay_g     => 3,
---      cnt_width_g => 2
---    )
---    port map (
---      clk_i   => clk_21m5_s,
---      por_n_o => por_n_s
---    );
-  por_b : vp_por
-    generic map (
-      delay_g     => 6,
-      cnt_width_g => 3
-    )
-    port map (
-      clk_i   => clk_43m_s,
-      por_n_o => por_n_s
-    );
-
-  -----------------------------------------------------------------------------
-  -- The PLL
-  -----------------------------------------------------------------------------
---  pll_b : zxuno_xs6_pll
---    port map (
---      clkin_i    => clk50mhz,
---      locked_o   => dcm_locked_s,
---      clk_43m_o  => clk_43m_s,     --42.857Mhz
---      clk_21m5_o => clk_21m5_s     --21.428Mhz
---    );
-
-  pll_dual : relojes_pll
-  port map
-	 (-- Clock in ports
-	  CLK_IN1           => clk50mhz, --50Mhz
-	  -- Clock out ports
-	  CLK_OUT1          => clk_50m_s,       --50Mhz
-	  CLK_OUT2          => clk_71m_s,       --70.833Mhz
-	  CLK_OUT3          => clk_43m_s,       --42.500Mhz
-	  -- Status and control signals
-	  LOCKED            => dcm_locked_s
-	 );
-  
-  -----------------------------------------------------------------------------
-  -- Process clk_en
-  --
-  -- Purpose:
-  --   Generates the CPU and VDC clock enables.
-  --   For NTSC signal
---  clk_en: process (clk_21m5_s, reset_video_s)
---  begin
---    if reset_video_s = '1' then
---      cnt_cpu_q    <= cnt_cpu_c;
---      cnt_vdc_q    <= cnt_vdc_c;
---
---    elsif rising_edge(clk_21m5_s) then
---      if clk_cpu_en_s = '1' then
---        cnt_cpu_q <= cnt_cpu_c;
---      else
---        cnt_cpu_q <= cnt_cpu_q - 1;
---      end if;
---      --
---      if clk_vdc_en_s = '1' then
---        cnt_vdc_q <= cnt_vdc_c;
---      else
---        cnt_vdc_q <= cnt_vdc_q - 1;
---      end if;
---    end if;
---  end process clk_en;
---  --
---  clk_cpu_en_s <= '1' when cnt_cpu_q = 0 else '0';
---  clk_vdc_en_s <= '1' when cnt_vdc_q = 0 else '0';
---  --
-  clk_en: process (clk_43m_s, reset_video_s)
-  begin
-    if reset_video_s = '1' then
-      cnt_cpu_qn    <= cnt_cpu_cn;
-      cnt_vdc_qn    <= cnt_vdc_cn;
-		cnt_vga_qn    <= cnt_vga_cn;
-		clk_vga_en_qn <= '0';
-		clk_sysn <= '0';
-    elsif rising_edge(clk_43m_s) then
-      clk_sysn <= not clk_sysn; --'1' when clk_sysn = '0' else '0';
-      --CPU
-		if clk_cpu_en_sn = '1' then
-        cnt_cpu_qn <= cnt_cpu_cn;
-      else
-        cnt_cpu_qn <= cnt_cpu_qn - 1;
-      end if;
-      --VDC
-      if clk_vdc_en_sn = '1' then
-        cnt_vdc_qn <= cnt_vdc_cn;
-      else
-        cnt_vdc_qn <= cnt_vdc_qn - 1;
-      end if;
-		--VGA
-      if cnt_vga_qn = 0 then
-        cnt_vga_qn    <= cnt_vga_cn;
-        clk_vga_en_qn <= '1';
-      else
-        cnt_vga_qn    <= cnt_vga_qn - 1;
-        clk_vga_en_qn <= '0';
-      end if;				
-    end if;
-  end process clk_en;
-  --
-  clk_cpu_en_sn <= '1' when cnt_cpu_qn = 0 else '0';
-  clk_vdc_en_sn <= '1' when cnt_vdc_qn = 0 else '0';
-  --
-  -----------------------------------------------------------------------------
-  -- Process clk_en
-  --
-  -- Purpose:
-  --   Generates the CPU and VDC clock enables.
-  --   For PAL signal
-  clk_ep: process (clk_71m_s, reset_video_s)
-  begin
-	 if reset_video_s = '1' then
-      cnt_cpu_qp    <= cnt_cpu_cp;
-      cnt_vdc_qp    <= cnt_vdc_cp;
-		cnt_vga_qp    <= cnt_vga_cp;
-		clk_vga_en_qp <= '0';
-		clk_sysp <= '0';
-    elsif rising_edge(clk_71m_s) then
-      clk_sysp <= not clk_sysp; --'1' when clk_sysp = '0' else '0';
-      --CPU
-		if clk_cpu_en_sp = '1' then
-        cnt_cpu_qp <= cnt_cpu_cp;
-      else
-        cnt_cpu_qp <= cnt_cpu_qp - 1;
-      end if;
-      --VDC
-      if clk_vdc_en_sp = '1' then
-        cnt_vdc_qp <= cnt_vdc_cp;
-      else
-        cnt_vdc_qp <= cnt_vdc_qp - 1;
-      end if;
-		--VGA
-      if cnt_vga_qp = 0 then
-        cnt_vga_qp    <= cnt_vga_cp;
-        clk_vga_en_qp <= '1';
-      else
-        cnt_vga_qp    <= cnt_vga_qp - 1;
-        clk_vga_en_qp <= '0';
-      end if;		
-    end if;
-  end process clk_ep;
-  --
-  clk_cpu_en_sp <= '1' when cnt_cpu_qp = 0 else '0';
-  clk_vdc_en_sp <= '1' when cnt_vdc_qp = 0 else '0';
-  --
-
-  -----------------------------------------------------------------------------
-
-
---  -----------------------------------------------------------------------------
---  -- Process vga_clk_en
---  --
---  -- Purpose:
---  --   Generates the VGA clock enable.
---  --
---  vga_clk_en: process (clk_43m_s, reset_video_s)
---  begin
---    if reset_video_s = '1' then
---      cnt_vga_q    <= cnt_vga_c;
---      clk_vga_en_q <= '0';
---    elsif rising_edge(clk_43m_s) then
---      if cnt_vga_q = 0 then
---        cnt_vga_q    <= cnt_vga_c;
---        clk_vga_en_q <= '1';
---      else
---        cnt_vga_q    <= cnt_vga_q - 1;
---        clk_vga_en_q <= '0';
---      end if;
---    end if;
---  end process vga_clk_en;
---  --
-  -----------------------------------------------------------------------------
-
-  -- Clk assigning
-  -- is_pal_s <= '1';
-  --clk_main <= clk_71m_s when (is_pal_s = '1') else clk_43m_s;
-  
-   -- BUFGMUX: Global Clock Mux Buffer
-   --          Spartan-6
-   -- Xilinx HDL Language Template, version 14.7
-
-   BUFGMUX_inst : BUFGMUX
-   generic map (
-      CLK_SEL_TYPE => "SYNC"  -- Glitchles ("SYNC") or fast ("ASYNC") clock switch-over
-   )
-   port map (
-      O => clk_main,          -- 1-bit output: Clock buffer output
-      I0 => clk_43m_s,        -- 1-bit input: Clock buffer input (S=0)
-      I1 => clk_71m_s,        -- 1-bit input: Clock buffer input (S=1)
-      S => is_pal_s           -- 1-bit input: Clock buffer select
-   );
-  
-  clk_sys <= clk_sysp when (is_pal_s = '1') else clk_sysn;
-  -- ??? El clksys debe ser este o dividido entre 2
-  clk_cpu <= clk_cpu_en_sp when (is_pal_s = '1') else clk_cpu_en_sn;
-  clk_vdc <= clk_vdc_en_sp when (is_pal_s = '1') else clk_vdc_en_sn;
-  clk_vga <= clk_vga_en_qp when (is_pal_s = '1') else clk_vga_en_qn;
   -----------------------------------------------------------------------------
   -- The Videopac console
   -----------------------------------------------------------------------------
@@ -808,12 +784,22 @@ begin
     --
     -- Audio dac
     --
+--    dac1 : dac
+--    port map (
+--      Clk => clk_sys,
+--      DACout => audio_s,
+--      DACin => '0' & snd_vec_s & "0000",
+--      Reset => reset_s
+--    );
     dac1 : dac
+    generic map (
+      msbi_g => 3
+    )
     port map (
-      Clk => clk_sys,
-      DACout => audio_s,
-      DACin => '0' & snd_vec_s & "0000",
-      Reset => reset_s
+      clk_i => clk_sysn,
+      res_n_i => reset_n_s,
+      dac_i => snd_vec_s,
+      dac_o => audio_s
     );
     
   -----------------------------------------------------------------------------
@@ -868,6 +854,7 @@ begin
   --
   dblscan_b : dblscan
     port map (
+      is_pal_in  => is_pal_s,
       RGB_R_IN   => rgb_r_s,
       RGB_G_IN   => rgb_g_s,
       RGB_B_IN   => rgb_b_s,
@@ -896,6 +883,31 @@ begin
       RESET_N_I  => reset_video_n_s,
       ODD_LINE   => oddLine
     );
+
+--dblscan_b : vga_scandoubler 
+--   port map (
+--         clk => clk_vdc,
+--         clkcolor4x => '1',
+--         clk14en => clk_vga,
+--         enable_scandoubling => '1',
+--         disable_scaneffect => '1',  -- 1 to disable scanlines
+--         ri => rgb_r_s & "00",
+--         gi => rgb_g_s & "00",
+--         bi => rgb_b_s & rgb_l_s & "0",
+--         hsync_ext_n => vga_hsync_s,
+--         vsync_ext_n => vga_hsync_s,
+--         csync_ext_n => '1',
+--         ro(2) => vga_r_s,
+--         ro(1 downto 0) => open,
+--         go(2) => vga_g_s,
+--         go(1 downto 0) => open,
+--         bo(2) => vga_b_s,
+--         bo(1) => vga_l_s,
+--         bo(0) => open,
+--         hsync => vga_hsync_s,
+--         vsync => vga_vsync_s
+--  );
+
 --
 
 --  --

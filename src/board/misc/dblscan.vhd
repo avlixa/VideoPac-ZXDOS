@@ -55,6 +55,7 @@ library ieee;
 
 entity DBLSCAN is
   port (
+    is_pal_in     : in  std_logic;
     RGB_R_IN      : in  std_logic;
     RGB_G_IN      : in  std_logic;
     RGB_B_IN      : in  std_logic;
@@ -107,7 +108,10 @@ architecture RTL of DBLSCAN is
   constant dbl_num_pix_c  : natural := dbl_hs_c + dbl_hbp_c + dbl_hdisp_c +
                                        dbl_hfp_c;
   -- correction value to center visible picture portion
-  constant dbl_adjust_c   : natural := 22;
+  signal   dbl_adjust_c    : natural := 22;
+  constant dbl_adjustn_c   : natural := 12;
+  constant dbl_adjustp_c   : natural := 1;
+  
 
   --
   -- input timing
@@ -141,6 +145,8 @@ architecture RTL of DBLSCAN is
   constant pos_rgb_l_c : natural := 3;
 
 begin
+
+  dbl_adjust_c <= dbl_adjustp_c when (is_pal_in = '1') else dbl_adjustn_c;
 
   p_input_timing : process(CLK_RGB, RESET_N_I)
     variable rising_h : boolean;

@@ -380,6 +380,8 @@ architecture struct of videopac_zxdos_lx25 is
 --   signal blank_s        : std_logic;
 
   signal snd_vec_s      : std_logic_vector( 3 downto 0);
+  signal snd_dac_s      : std_logic_vector( 8 downto 0);
+  signal snd_s          : std_logic;
 --   signal pcm_audio_s    : signed(8 downto 0);
 
 	signal audio_s    : std_logic;
@@ -802,7 +804,7 @@ begin
       vsync_n_o      => rgb_vsync_n_s,
       hbl_o          => open,
       vbl_o          => open,
-      snd_o          => open,
+      snd_o          => snd_s, --open,
       snd_vec_o      => snd_vec_s,
 	  hpos_o         => hpos,
 	  vpos_o         => vpos
@@ -816,10 +818,12 @@ begin
     port map (
       Clk => clk_sys,
       DACout => audio_s,
-      DACin => '0' & snd_vec_s & "0000",
+      DACin => snd_dac_s,
       Reset => reset_s
     );
     
+    --snd_dac_s <= ("000" & snd_vec_s & "00") when (snd_s = '1') else (others=>'0');
+    snd_dac_s <= ("000" & snd_vec_s & snd_vec_s(3 downto 2) ); -- when (snd_s = '1') else (others=>'0');
   -----------------------------------------------------------------------------
   -- Multicard controller
   -----------------------------------------------------------------------------

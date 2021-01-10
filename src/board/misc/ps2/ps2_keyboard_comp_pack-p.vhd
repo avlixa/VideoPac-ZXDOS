@@ -31,7 +31,16 @@ package ps2_keyboard_comp_pack is
       tx_error_no_keyboard_ack : out  std_logic;
 	   keyb_f1         : out   std_logic;
 	   keyb_f2         : out   std_logic;
-	   keyb_f3         : out   std_logic
+	   keyb_f3         : out   std_logic;
+      keyb_f4         : out   std_logic;
+      keyb_f5         : out   std_logic;
+      keyb_f6         : out   std_logic;
+      keyb_f7         : out   std_logic;
+      keyb_f8         : out   std_logic;
+      keyb_f9         : out   std_logic;
+      keyb_f10         : out   std_logic;
+      keyb_f11         : out   std_logic;
+      keyb_f12         : out   std_logic   
     );
   end component;
 

@@ -1,0 +1,2 @@
+vhdl work ../../relojes_pll.vhd
+vhdl work ../example_design/relojes_pll_exdes.vhd

@@ -142,7 +142,16 @@ entity ps2_keyboard_interface is
   tx_error_no_keyboard_ack : out  std_logic;
   keyb_f1         : out   std_logic;
   keyb_f2         : out   std_logic;
-  keyb_f3         : out   std_logic
+  keyb_f3         : out   std_logic;
+  keyb_f4         : out   std_logic;
+  keyb_f5         : out   std_logic;
+  keyb_f6         : out   std_logic;
+  keyb_f7         : out   std_logic;
+  keyb_f8         : out   std_logic;
+  keyb_f9         : out   std_logic;
+  keyb_f10         : out   std_logic;
+  keyb_f11         : out   std_logic;
+  keyb_f12         : out   std_logic
   );
 end ps2_keyboard_interface;
 
@@ -163,6 +172,15 @@ constant CAPS_CODE    : integer := 16#58#;
 constant F1_CODE      : integer := 16#05#;
 constant F2_CODE      : integer := 16#06#;
 constant F3_CODE      : integer := 16#04#;
+constant F4_CODE      : integer := 16#0C#;
+constant F5_CODE      : integer := 16#03#;
+constant F6_CODE      : integer := 16#0B#;
+constant F7_CODE      : integer := 16#83#;
+constant F8_CODE      : integer := 16#0A#;
+constant F9_CODE      : integer := 16#01#;
+constant F10_CODE      : integer := 16#09#;
+constant F11_CODE      : integer := 16#78#;
+constant F12_CODE      : integer := 16#07#;
 
 
 -- constants
@@ -685,7 +703,7 @@ begin
 end process;
 
 --
--- F1, F2, F3
+-- F1, F2, F3 ... F12
 --
 function_keys : process(clk)
 begin
@@ -694,6 +712,15 @@ begin
       keyb_f1 <= '0';
 		keyb_f2 <= '0';
 		keyb_f3 <= '0';
+		keyb_f4 <= '0';
+		keyb_f5 <= '0';
+		keyb_f6 <= '0';
+		keyb_f7 <= '0';
+		keyb_f8 <= '0';
+		keyb_f9 <= '0';
+		keyb_f10 <= '0';
+		keyb_f11 <= '0';
+		keyb_f12 <= '0';
     elsif (q(8 downto 1) = F1_CODE) and
           (rx_shifting_done = '1') then
       keyb_f1 <= not hold_released;
@@ -703,6 +730,33 @@ begin
     elsif (q(8 downto 1) = F3_CODE) and
           (rx_shifting_done = '1') then
       keyb_f3 <= not hold_released;
+    elsif (q(8 downto 1) = F4_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f4 <= not hold_released;
+    elsif (q(8 downto 1) = F5_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f5 <= not hold_released;
+    elsif (q(8 downto 1) = F6_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f6 <= not hold_released;
+    elsif (q(8 downto 1) = F7_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f7 <= not hold_released;
+    elsif (q(8 downto 1) = F8_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f8 <= not hold_released;
+    elsif (q(8 downto 1) = F9_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f9 <= not hold_released;
+    elsif (q(8 downto 1) = F10_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f10 <= not hold_released;
+    elsif (q(8 downto 1) = F11_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f11 <= not hold_released;
+    elsif (q(8 downto 1) = F12_CODE) and
+          (rx_shifting_done = '1') then
+      keyb_f12 <= not hold_released;
     end if;
   end if;
 end process;
