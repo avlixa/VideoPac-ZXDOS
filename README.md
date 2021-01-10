@@ -34,6 +34,7 @@ Beta 1:
   * F1 - Loads testrom made by @Mejias3D
   * F3 - Reset
   * Scroll Lock - switch VGA/RGA
+
 Beta 2:
 * Temporal unstable version
 * Updated T48 to 2009 version
