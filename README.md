@@ -44,6 +44,11 @@ Beta 3:
 * Adapted DAC module
 * Clock improvements
 
+Beta 4:
+* Make visible 10th column of dots in the grid
+* Improvements in stability of ZPU menú
+* Not working on lx25
+
 === ORIGINAL README: ===
 ------------------------
 This is the MiST port of Arnim Laeuger's implementation of a Videopac console

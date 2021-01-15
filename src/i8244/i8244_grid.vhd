@@ -120,7 +120,9 @@ begin
              lower_v,
              left_v,
              right_v,
-             dot_v    : natural;
+             dot_v,    
+             left_v10,
+             dot_v10 : natural;
   begin
     if res_i then
       hgrid_q <= '0';
@@ -164,6 +166,14 @@ begin
                 end if;
               end if;
             end loop;
+            
+            -- Show dot column n.10                       --avlixa
+            left_v10  := grid_hoffset_c + 9 * grid_hspace_c;
+            dot_v10   := left_v10 + grid_hwidth_c;
+            if hpos_v >= left_v10 and hpos_v < dot_v10 then
+               dgrid_q <= '1';
+            end if;
+           
           end if;
         end loop;
 

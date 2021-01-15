@@ -13,7 +13,7 @@ use work.zpupkg.ALL;
 
 entity CtrlModule is
 	generic (
-		sysclk_frequency : integer := 500  -- Sysclk frequency * 10 
+		sysclk_frequency : integer := 43 --500  -- Sysclk frequency * 10 
 	);
 	port (
 		clk 			: in std_logic;

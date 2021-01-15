@@ -55,10 +55,6 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="35"/>
     </file>
-    <file xil_pn:name="../../src/i8244/i8244_grid.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
-      <association xil_pn:name="Implementation" xil_pn:seqID="34"/>
-    </file>
     <file xil_pn:name="../../src/i8244/i8244_major_obj.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="12"/>
@@ -334,10 +330,6 @@
     <file xil_pn:name="../../src/board/zxdos_lx16/videopac_zxdos_lx16_pines.ucf" xil_pn:type="FILE_UCF">
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
-    <file xil_pn:name="../../src/board/misc/dac.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
-      <association xil_pn:name="Implementation" xil_pn:seqID="75"/>
-    </file>
     <file xil_pn:name="ipcore_dir/relojes_pll.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="62"/>
@@ -346,20 +338,19 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
-    <file xil_pn:name="debug/debu_videopac.cdc" xil_pn:type="FILE_CDC">
-      <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
-    </file>
     <file xil_pn:name="../../src/test/tb_ps2test.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="4"/>
       <association xil_pn:name="PostMapSimulation" xil_pn:seqID="210"/>
       <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="210"/>
       <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="210"/>
     </file>
-    <file xil_pn:name="../../src/test/tb_ps2test.v" xil_pn:type="FILE_VERILOG">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="4"/>
-      <association xil_pn:name="PostMapSimulation" xil_pn:seqID="214"/>
-      <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="214"/>
-      <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="214"/>
+    <file xil_pn:name="../../src/i8244/i8244_grid_10.vhd" xil_pn:type="FILE_VHDL">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="215"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="34"/>
+    </file>
+    <file xil_pn:name="../../src/board/misc/dac_pwm8.v" xil_pn:type="FILE_VERILOG">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="219"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="75"/>
     </file>
   </files>
 

@@ -275,16 +275,27 @@ architecture struct of videopac_zxdos_lx25 is
 --  end component;
 
   component dac
-  generic (
-    msbi_g : integer := 7
-  );
-  port (
-    clk_i   : in  std_logic;
-    res_n_i : in  std_logic;
-    dac_i   : in  std_logic_vector(msbi_g downto 0);
-    dac_o   : out std_logic
-  );
+    port(
+      DACout: out std_logic;
+      DACin : in  std_logic_vector(3 downto 0);
+      Clk : in  std_logic;
+      Reset : in  std_logic
+    );
   end component;
+
+--  component dac
+--  generic (
+--    msbi_g : integer := 7
+--  );
+--  port (
+--    clk_i   : in  std_logic;
+--    res_n_i : in  std_logic;
+--    dac_i   : in  std_logic_vector(msbi_g downto 0);
+--    dac_o   : out std_logic
+--  );
+--  end component;
+
+
 
   signal dcm_locked_s   : std_logic;
   signal reset_n_s,
@@ -818,16 +829,24 @@ begin
 --      DACin => '0' & snd_vec_s & "0000",
 --      Reset => reset_s
 --    );
+--    dac1 : dac
+--    generic map (
+--      msbi_g => 4
+--    )
+--    port map (
+--      clk_i => clk_vdc_en_sp,
+--      res_n_i => reset_n_s,
+--      dac_i => '0' & snd_vec_s,
+--      dac_o => audio_s
+--    );
     dac1 : dac
-    generic map (
-      msbi_g => 4
-    )
     port map (
-      clk_i => clk_vdc_en_sp,
-      res_n_i => reset_n_s,
-      dac_i => '0' & snd_vec_s,
-      dac_o => audio_s
+      DACout => audio_s,
+      DACin => snd_vec_s,
+      Clk => clk_50m_s,
+      Reset => reset_s
     );
+
     
   -----------------------------------------------------------------------------
   -- Multicard controller
@@ -978,15 +997,15 @@ begin
 			if clk_vga = '1' then
 			  col_v := to_integer(unsigned'(vga_l_s & vga_r_s & vga_g_s & vga_b_s));
 
-			  if ( osd_alpha = '1' ) then
-					vga_red_i(7 downto 2) <= osd_r;
-					vga_green_i(7 downto 2) <= osd_g;
-					vga_blue_i(7 downto 2) <= osd_b;
-			  else
+--			  if ( osd_alpha = '1' ) then
+--					vga_red_i(7 downto 2) <= osd_r;
+--					vga_green_i(7 downto 2) <= osd_g;
+--					vga_blue_i(7 downto 2) <= osd_b;
+--			  else
 					vga_red_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(r_c), 8));
 					vga_green_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(g_c), 8));
 					vga_blue_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(b_c), 8));
-			  end if;
+--			  end if;
 
 			  vga_hsync_i <= not vga_hsync_s;
 			  vga_vsync_i <= not vga_vsync_s;
@@ -995,15 +1014,15 @@ begin
 			if clk_vdc = '1' then
 			  col_v := to_integer(unsigned'(rgb_l_s & rgb_r_s & rgb_g_s & rgb_b_s));
 
-			  if ( osd_alpha = '1' ) then
-					vga_red_i(7 downto 2) <= osd_r;
-					vga_green_i(7 downto 2) <= osd_g;
-					vga_blue_i(7 downto 2) <= osd_b;
-			  else
+--			  if ( osd_alpha = '1' ) then
+--					vga_red_i(7 downto 2) <= osd_r;
+--					vga_green_i(7 downto 2) <= osd_g;
+--					vga_blue_i(7 downto 2) <= osd_b;
+--			  else
 					vga_red_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(r_c), 8));
 					vga_green_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(g_c), 8));
 					vga_blue_i(7 downto 0) <= std_logic_vector(to_unsigned(full_rgb_table_c(col_v)(b_c), 8));
-			  end if;
+--			  end if;
 
 			  vga_hsync_i <= not rgb_hsync_s;
 			  vga_vsync_i <= not rgb_vsync_s;
@@ -1200,8 +1219,8 @@ begin
 
   MyCtrlModule : entity work.CtrlModule
 	port map (
-		clk => clk_50m_s,
-      --clk => clk_71m_s,
+		--clk => clk_50m_s,
+      clk => clk_43m_s,
 		reset_n => por_n_s,
 
 		-- Video signals for OSD
@@ -1262,8 +1281,8 @@ begin
    overlay : entity work.OSD_Overlay
 	port map
 	(
-		clk => clk_50m_s,
-      --clk => clk_71m_s,
+		--clk => clk_50m_s,
+      clk => clk_43m_s,
 		red_in => vga_red_i,
 		green_in => vga_green_i,
 		blue_in => vga_blue_i,
@@ -1324,6 +1343,5 @@ begin
        clk_icap => clk_vga_en_qn,
        REBOOT => key_hard_reset
    );
-
 
 end struct;
