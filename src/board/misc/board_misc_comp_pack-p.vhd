@@ -47,9 +47,9 @@ package board_misc_comp_pack is
       BLANK_OUT     : out std_logic;
       --  NOTE CLOCKS MUST BE PHASE LOCKED !!
       CLK_RGB       : in  std_logic; -- input pixel clock
-      CLK_EN_RGB    : in  std_logic;
+--      CLK_EN_RGB    : in  std_logic;
       CLK_VGA       : in  std_logic; -- output clock
-      CLK_EN_VGA    : in  std_logic;
+--      CLK_EN_VGA    : in  std_logic;
       RESET_N_I     : in  std_logic;
 		
 		ODD_LINE      : out std_logic

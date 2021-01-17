@@ -74,9 +74,9 @@ entity DBLSCAN is
     BLANK_OUT     : out std_logic;
     --  NOTE CLOCKS MUST BE PHASE LOCKED !!
     CLK_RGB       : in  std_logic; -- input pixel clock
-    CLK_EN_RGB    : in  std_logic;
+--    CLK_EN_RGB    : in  std_logic;
     CLK_VGA       : in  std_logic; -- output clock
-    CLK_EN_VGA    : in  std_logic;
+--    CLK_EN_VGA    : in  std_logic;
     RESET_N_I     : in  std_logic;
 
     ODD_LINE      : out std_logic
@@ -109,7 +109,7 @@ architecture RTL of DBLSCAN is
                                        dbl_hfp_c;
   -- correction value to center visible picture portion
   signal   dbl_adjust_c    : natural := 22;
-  constant dbl_adjustn_c   : natural := 12;
+  constant dbl_adjustn_c   : natural := 20; --12
   constant dbl_adjustp_c   : natural := 1;
   
 
@@ -146,7 +146,8 @@ architecture RTL of DBLSCAN is
 
 begin
 
-  dbl_adjust_c <= dbl_adjustp_c when (is_pal_in = '1') else dbl_adjustn_c;
+  --dbl_adjust_c <= dbl_adjustp_c when (is_pal_in = '1') else dbl_adjustn_c;
+  dbl_adjust_c <= dbl_adjustn_c when (is_pal_in = '0') else dbl_adjustp_c;
 
   p_input_timing : process(CLK_RGB, RESET_N_I)
     variable rising_h : boolean;
@@ -159,7 +160,7 @@ begin
       hpos_i      <= (others => '0');
 
     elsif rising_edge (CLK_RGB) then
-      if CLK_EN_RGB = '1' then
+--      if CLK_EN_RGB = '1' then
         hsync_in_t1 <= HSYNC_IN;
         vsync_in_t1 <= VSYNC_IN;
 
@@ -177,14 +178,17 @@ begin
         else
           hpos_i <= std_logic_vector(unsigned(hpos_i) + 1);
         end if;
-      end if;
+--      end if;
 
     end if;
 
   end process;
 
-  we_a <=     ibank and CLK_EN_RGB;
-  we_b <= not ibank and CLK_EN_RGB;
+--  we_a <=     ibank and CLK_EN_RGB;
+--  we_b <= not ibank and CLK_EN_RGB;
+  we_a <=     ibank; --and CLK_RGB;
+  we_b <= not ibank; --and CLK_RGB;
+
   rgb_in <= (pos_rgb_l_c => RGB_L_IN,
              pos_rgb_b_c => RGB_B_IN,
              pos_rgb_g_c => RGB_G_IN,
@@ -235,7 +239,7 @@ begin
       ovs_t1 <= '0';
 
     elsif rising_edge(CLK_VGA) then
-      if CLK_EN_VGA = '1' then
+--      if CLK_EN_VGA = '1' then
         rising_h := ((ohs = '1') and (ohs_t1 = '0'));
 
         if rising_h or hpos_o = dbl_num_pix_c-1 then
@@ -259,7 +263,7 @@ begin
 
         ovs <= VSYNC_IN; -- reg on CLK_VGA
         ovs_t1 <= ovs;
-      end if;
+--      end if;
 
     end if;
   end process;
@@ -281,7 +285,7 @@ begin
       ODD_LINE <= '0';
 
     elsif rising_edge(CLK_VGA) then
-      if CLK_EN_VGA = '1' then
+--      if CLK_EN_VGA = '1' then
 
         HSYNC_OUT <= '0';
         if hpos_o < dbl_hs_c then
@@ -309,7 +313,7 @@ begin
         end if;
 
         VSYNC_OUT <= not vs_cnt(2);
-      end if;
+--      end if;
 
     end if;
   end process;

@@ -59,8 +59,8 @@ use ieee.std_logic_1164.all;
 entity vp_console is
   port (
     -- System Interface -------------------------------------------------------
-    --is_pal_g       : in  integer;
-	 is_pal_g       : in  std_logic;
+    is_pal_g       : in  integer;
+	 --is_pal_g       : in  std_logic;
     clk_i          : in  std_logic;
     clk_cpu_en_i   : in  std_logic;
     clk_vdc_en_i   : in  std_logic;
@@ -297,17 +297,17 @@ begin
     );
   --
   cart_d_o <= db_from_cpu_s;
-  is_pal_g_v(0) <= is_pal_g;
-  is_pal_g_v(2 downto 1) <= "00";
-  is_pal_g_int <= to_integer(unsigned(is_pal_g_v));
+--  is_pal_g_v(0) <= is_pal_g;
+--  is_pal_g_v(2 downto 1) <= "00";
+--  is_pal_g_int <= to_integer(unsigned(is_pal_g_v));
   
   -----------------------------------------------------------------------------
   -- I8244 VDC
   -----------------------------------------------------------------------------
   vdc_b : i8244_top_sync
     port map (
-      --is_pal_g   => is_pal_g,
-		is_pal_g   => is_pal_g_int,
+      is_pal_g   => is_pal_g,
+		--is_pal_g   => is_pal_g_int,
       clk_i      => clk_i,
       clk_en_i   => clk_vdc_en_i,
       res_n_i    => res_n_i,

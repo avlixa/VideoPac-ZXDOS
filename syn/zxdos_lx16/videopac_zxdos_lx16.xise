@@ -344,7 +344,7 @@
       <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="210"/>
       <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="210"/>
     </file>
-    <file xil_pn:name="../../src/i8244/i8244_grid_10.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../../src/i8244/i8244_grid.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="215"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="34"/>
     </file>

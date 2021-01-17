@@ -33,7 +33,7 @@ Beta 1:
 * Special keys:
   * F1 - Loads testrom made by @Mejias3D
   * F3 - Reset
-  * Scroll Lock - switch VGA/RGA
+  * Scroll Lock/F12 - switch VGA/RGA
 
 Beta 2:
 * Temporal unstable version
@@ -47,7 +47,7 @@ Beta 3:
 Beta 4:
 * Make visible 10th column of dots in the grid
 * Improvements in stability of ZPU menú
-* Not working on lx25
+
 
 === ORIGINAL README: ===
 ------------------------

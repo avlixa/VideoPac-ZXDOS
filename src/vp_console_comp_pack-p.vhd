@@ -18,8 +18,8 @@ package vp_console_comp_pack is
   component vp_console
     port (
       -- System Interface -----------------------------------------------------
-    --is_pal_g       : in  integer;
-	 is_pal_g       : in  std_logic;
+      is_pal_g       : in  integer;
+	 --is_pal_g       : in  std_logic;
        clk_i          : in  std_logic;
       clk_cpu_en_i   : in  std_logic;
       clk_vdc_en_i   : in  std_logic;

@@ -150,7 +150,7 @@ architecture struct of videopac_zxdos_lx16 is
 	  -- Clock out ports
 	  CLK_OUT1          : out    std_logic; --50Mhz
 	  CLK_OUT2          : out    std_logic; --70.833Mhz
-	  CLK_OUT3          : out    std_logic; --42.500Mz
+	  CLK_OUT3          : out    std_logic; --42.500Mhz
      -- Status and control signals
 	  LOCKED            : out    std_logic
 	 );
@@ -314,8 +314,9 @@ architecture struct of videopac_zxdos_lx16 is
   signal clk_vga       :  std_logic;
   signal clk_main       :  std_logic;
   signal is_pal_s      :  std_logic;
-  signal clk_sysp      :  std_logic;
-  signal clk_sysn      :  std_logic;
+  signal is_pal_i      :  integer;
+  signal clk_sysp, clk_sysp_next :  std_logic;
+  signal clk_sysn, clk_sysn_next :  std_logic;
   
   signal glob_res_n_s   : std_logic;
   
@@ -613,7 +614,7 @@ begin
       --clk_vdc_en_sn <= '0';
 		clk_sysn <= '0';
     elsif rising_edge(clk_43m_s) then
-      clk_sysn <= not clk_sysn; --'1' when clk_sysn = '0' else '0';
+      clk_sysn <= clk_sysn_next; --not clk_sysn; --'1' when clk_sysn = '0' else '0';
       --CPU
 		if clk_cpu_en_sn = '1' then
         cnt_cpu_qn <= cnt_cpu_cn;
@@ -638,6 +639,7 @@ begin
     end if;
   end process clk_en;
   --
+  clk_sysn_next <= '1' when clk_sysn = '0' else '0';
   clk_cpu_en_sn <= '1' when cnt_cpu_qn = 0 else '0';
   clk_vdc_en_sn <= '1' when cnt_vdc_qn = 0 else '0';
 --  clk_vga_en_qn <= '1' when cnt_vga_qn = 0 else '0';
@@ -657,7 +659,7 @@ begin
 		--clk_vga_en_qp <= '0';
 		clk_sysp <= '0';
     elsif rising_edge(clk_71m_s) then
-      clk_sysp <= not clk_sysp; --'1' when clk_sysp = '0' else '0';
+      clk_sysp <= clk_sysp_next; --not clk_sysp; --'1' when clk_sysp = '0' else '0';
       --CPU
 		if clk_cpu_en_sp = '1' then
         cnt_cpu_qp <= cnt_cpu_cp;
@@ -681,6 +683,7 @@ begin
     end if;
   end process clk_ep;
   --
+  clk_sysp_next <= '1' when clk_sysp = '0' else '1';
   clk_cpu_en_sp <= '1' when cnt_cpu_qp = 0 else '0';
   clk_vdc_en_sp <= '1' when cnt_vdc_qp = 0 else '0';
 --  clk_vga_en_qp <= '1' when cnt_vga_cp = 0 else '0';
@@ -708,7 +711,18 @@ begin
       S => is_pal_s           -- 1-bit input: Clock buffer select
    );
   
-  clk_sys <= clk_sysp when (is_pal_s = '1') else clk_sysn;
+   --clk_sys <= clk_sysp when (is_pal_s = '1') else clk_sysn;
+   BUFGMUX_inst2 : BUFGMUX
+   generic map (
+      CLK_SEL_TYPE => "SYNC"  -- Glitchles ("SYNC") or fast ("ASYNC") clock switch-over
+   )
+   port map (
+      O => clk_sys,          -- 1-bit output: Clock buffer output
+      I0 => clk_sysn,        -- 1-bit input: Clock buffer input (S=0)
+      I1 => clk_sysp,        -- 1-bit input: Clock buffer input (S=1)
+      S => is_pal_s           -- 1-bit input: Clock buffer select
+   );
+
   clk_cpu <= clk_cpu_en_sp when (is_pal_s = '1') else clk_cpu_en_sn;
   clk_vdc <= clk_vdc_en_sp when (is_pal_s = '1') else clk_vdc_en_sn;
   clk_vga <= clk_vga_en_qp when (is_pal_s = '1') else clk_vga_en_qn;
@@ -728,10 +742,10 @@ begin
       --clk => clk_sys,
 		--clk => clk_vdc_en_sp,
 		--clk => clk_sysn,
-		--clk => clk_43m_s,
+		clk => clk_43m_s,
       --clk => clk_sysn,
       --clk => clk_71m_s,
-      clk => clk_50m_s,
+      --clk => clk_50m_s,
       clk21m => clk_sysn,
 		reset => not host_reset_n,
       sram_addr => sram_addr(18 downto 0),
@@ -766,6 +780,8 @@ begin
 	 --testled1 <= not reset_s;
     
   
+  is_pal_i <= to_integer(unsigned'('0' & is_pal_s));
+  
   -----------------------------------------------------------------------------
   -- The Videopac console
   -----------------------------------------------------------------------------
@@ -774,7 +790,8 @@ begin
 --      is_pal_g => 1
 --    )
     port map (
-      is_pal_g => is_pal_s,
+      --is_pal_g => is_pal_s,
+      is_pal_g       => is_pal_i,
       clk_i          => clk_main,
       clk_cpu_en_i   => clk_cpu,
       clk_vdc_en_i   => clk_vdc,
@@ -839,7 +856,8 @@ begin
     port map (
       DACout => audio_s,
       DACin => snd_vec_s,
-      Clk => clk_50m_s,
+      --Clk => clk_50m_s,
+      Clk => clk_43m_s,
       Reset => reset_s
     );
 
@@ -919,9 +937,9 @@ begin
 --      CLK_VGA    => clk_main,
 --      CLK_EN_VGA => clk_vga,
       CLK_RGB    => clk_vdc,
-      CLK_EN_RGB => '1',
+--      CLK_EN_RGB => '1',
       CLK_VGA    => clk_vga,
-      CLK_EN_VGA => '1',
+--      CLK_EN_VGA => '1',
       RESET_N_I  => reset_video_n_s,
       ODD_LINE   => oddLine
     );
@@ -1168,9 +1186,13 @@ begin
   host_ps2_clk <= clkps2 or host_divert_keyboard;
 
   MyCtrlModule : entity work.CtrlModule
+   generic map (
+         sysclk_frequency => 425 --708 --430 --500  -- Sysclk frequency * 10 
+   )  
 	port map (
 		--clk => clk_50m_s,
       clk => clk_43m_s,
+      --clk => clk_71m_s,
 		reset_n => por_n_s,
 
 		-- Video signals for OSD
@@ -1293,6 +1315,5 @@ begin
        clk_icap => clk_vga_en_qn,
        REBOOT => key_hard_reset
    );
-
 
 end struct;

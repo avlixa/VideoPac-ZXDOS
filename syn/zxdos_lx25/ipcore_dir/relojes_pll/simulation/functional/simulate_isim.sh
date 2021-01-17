@@ -49,12 +49,13 @@
 
 # lin64
 # create the project
-vhpcomp -work work ../../../relojes_pll.vhd
-vhpcomp -work work ../../example_design/relojes_pll_exdes.vhd
-vhpcomp -work work ../relojes_pll_tb.vhd
+vlogcomp -work work ${XILINX}/verilog/src/glbl.v
+vlogcomp -work work ../../../relojes_pll.v
+vlogcomp -work work ../../example_design/relojes_pll_exdes.v
+vlogcomp -work work ../relojes_pll_tb.v
 
 # compile the project
-fuse work.relojes_pll_tb  -L unisim -o relojes_pll_isim.exe
+fuse work.relojes_pll_tb work.glbl -L unisims_ver -o relojes_pll_isim.exe
 
 # run the simulation script
 ./relojes_pll_isim.exe -gui -tclbatch simcmds.tcl
